@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Rin Tik</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color:#f0f0f0; padding:16px; display:flex; justify-content:center; min-height:100vh; position:relative; overflow-x:hidden; }
+        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 30% 40%, rgba(255,0,85,0.08), transparent 50%), radial-gradient(circle at 70% 60%, rgba(0,180,255,0.06), transparent 50%), radial-gradient(circle at 50% 80%, rgba(180,0,255,0.05), transparent 50%); pointer-events:none; z-index:0; }
+        .app { max-width:500px; width:100%; position:relative; z-index:1; }
+        .header { text-align:center; padding:20px 0 10px; }
+        .header h1 { font-size:3rem; font-weight:900; background:linear-gradient(135deg, #ff2d55, #bf5af2, #5e5ce6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:-1px; animation:glowPulse 2s ease-in-out infinite alternate; }
+        @keyframes glowPulse { 0% { filter:drop-shadow(0 0 8px #ff2d55); } 100% { filter:drop-shadow(0 0 25px #bf5af2); } }
+        .header .subtitle { font-size:0.85rem; color:#a0a0b0; letter-spacing:2px; font-weight:500; margin-top:4px; }
+        .search-box { background:rgba(20,20,25,0.75); backdrop-filter:blur(40px); -webkit-backdrop-filter:blur(40px); border-radius:40px; padding:24px 20px; margin-bottom:24px; border:1px solid rgba(255,45,85,0.3); box-shadow:0 25px 45px rgba(0,0,0,0.5), 0 0 30px rgba(255,45,85,0.1); position:relative; overflow:hidden; }
+        .search-input { width:100%; background:#1a1a1e; border:2px solid #2a2a35; border-radius:28px; padding:16px 24px; font-size:1rem; outline:none; margin-bottom:20px; color:#fff; font-weight:500; transition:0.25s; }
+        .search-input:focus { border-color:#ff2d55; box-shadow:0 0 30px rgba(255,45,85,0.3); }
+        .search-input::placeholder { color:#50505a; }
+        .search-btn { width:100%; background:linear-gradient(135deg, #ff2d55, #bf5af2); color:#fff; border:none; padding:16px; border-radius:28px; font-weight:700; font-size:1.1rem; letter-spacing:1px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; box-shadow:0 12px 30px rgba(255,45,85,0.4); transition:0.2s; position:relative; overflow:hidden; }
+        .search-btn::before { content:""; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition:0.6s; }
+        .search-btn:hover::before { left:100%; }
+        .search-btn:active { transform:scale(0.96); }
+        .hint { font-size:0.7rem; color:#707080; text-align:center; margin-top:16px; }
+        .captcha-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(20px); display:flex; align-items:center; justify-content:center; z-index:9999; }
+        .captcha-box { background:rgba(20,20,25,0.95); backdrop-filter:blur(30px); border-radius:40px; padding:30px 24px; text-align:center; border:1px solid rgba(255,45,85,0.4); box-shadow:0 30px 50px rgba(0,0,0,0.6); max-width:400px; width:90%; }
+        .captcha-box h2 { font-size:1.6rem; color:#ff2d55; margin-bottom:8px; }
+        .captcha-box p { color:#c0c0d0; margin-bottom:20px; font-size:0.95rem; }
+        .captcha-math { font-size:2rem; font-weight:900; color:#bf5af2; margin:15px 0; letter-spacing:5px; }
+        .captcha-input { width:80px; padding:12px; text-align:center; border:2px solid #2a2a35; border-radius:20px; font-size:1.2rem; font-weight:700; outline:none; background:#1a1a1e; color:#fff; }
+        .captcha-input:focus { border-color:#ff2d55; }
+        .captcha-btn { margin-top:20px; padding:12px 30px; background:#ff2d55; color:#fff; border:none; border-radius:30px; font-weight:700; cursor:pointer; box-shadow:0 8px 20px rgba(255,45,85,0.3); }
+        .loader { display:none; text-align:center; padding:40px; background:rgba(20,20,25,0.7); backdrop-filter:blur(25px); border-radius:40px; border:1px solid rgba(255,45,85,0.2); margin-bottom:24px; }
+        .loader .spinner { width:50px; height:50px; margin:0 auto 15px; border:4px solid #2a2a35; border-top-color:#ff2d55; border-radius:50%; animation:spin 0.8s linear infinite; }
+        @keyframes spin { 100% { transform:rotate(360deg); } }
+        .result-card { background:rgba(20,20,25,0.75); backdrop-filter:blur(40px); -webkit-backdrop-filter:blur(40px); border-radius:48px; padding:28px 22px; border:1px solid rgba(255,45,85,0.25); box-shadow:0 30px 50px rgba(0,0,0,0.5), 0 0 20px rgba(191,90,242,0.1); margin-bottom:24px; display:none; }
+        .profile { display:flex; align-items:center; gap:18px; margin-bottom:28px; }
+        .avatar-ring { width:90px; height:90px; border-radius:50%; padding:4px; background:linear-gradient(145deg, #ff2d55, #bf5af2, #5e5ce6); flex-shrink:0; box-shadow:0 0 40px rgba(255,45,85,0.5); cursor:pointer; transition:0.2s; }
+        .avatar-inner { width:100%; height:100%; border-radius:50%; background:#1a1a1e; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+        .avatar-inner img { width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; }
+        .avatar-fallback { font-size:40px; font-weight:800; color:#ff2d55; }
+        .name { font-size:1.6rem; font-weight:800; display:flex; align-items:center; gap:6px; }
+        .verified-icon { width:24px; height:24px; fill:#5e5ce6; filter:drop-shadow(0 0 5px #5e5ce6); }
+        .username { color:#a0a0b0; font-weight:600; font-size:0.95rem; }
+        .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; background:rgba(30,30,35,0.6); backdrop-filter:blur(10px); border-radius:28px; padding:18px 6px; margin-bottom:24px; border:1px solid rgba(255,45,85,0.2); }
+        .stat-item { text-align:center; } .stat-num { font-weight:800; font-size:1.5rem; color:#fff; } .stat-lbl { font-size:0.75rem; color:#808090; }
+        .id-row { background:rgba(30,30,35,0.7); backdrop-filter:blur(10px); border-radius:20px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border:1px solid rgba(191,90,242,0.2); }
+        .id-row span:first-child { color:#a0a0b0; font-weight:600; }
+        .id-row span:last-child { font-family:monospace; color:#bf5af2; direction:ltr; font-weight:700; }
+        .copy-btn { background:#ff2d55; color:#fff; border:none; padding:12px 22px; border-radius:24px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; margin-bottom:22px; box-shadow:0 8px 18px rgba(255,45,85,0.3); transition:0.15s; }
+        .copy-btn:active { opacity:0.8; }
+        .bio { background:rgba(30,30,35,0.6); backdrop-filter:blur(10px); border-radius:20px; padding:16px 20px; margin-bottom:22px; color:#d0d0e0; border:1px solid rgba(255,45,85,0.2); line-height:1.5; }
+        .section { margin-bottom:24px; }
+        .section-title { font-weight:800; margin-bottom:14px; display:flex; align-items:center; gap:10px; color:#fff; font-size:1rem; }
+        .detail { display:flex; justify-content:space-between; padding:14px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .detail:last-child { border-bottom:none; }
+        .detail-lbl { color:#808090; font-weight:500; } .detail-val { font-weight:700; color:#e0e0f0; direction:ltr; }
+        .badge { padding:6px 16px; border-radius:24px; font-size:0.8rem; font-weight:700; }
+        .badge-yes { background:rgba(255,45,85,0.15); color:#ff2d55; } .badge-no { background:rgba(255,255,255,0.05); color:#606070; }
+        .download-btn { width:100%; background:linear-gradient(135deg, #ff2d55, #bf5af2); color:#fff; border:none; padding:18px; border-radius:28px; font-weight:700; font-size:1rem; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; margin-bottom:20px; box-shadow:0 12px 25px rgba(191,90,242,0.3); transition:0.15s; position:relative; overflow:hidden; }
+        .download-btn::before { content:""; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent); transition:0.6s; }
+        .download-btn:hover::before { left:100%; }
+        .download-btn:active { transform:scale(0.97); }
+        .footer { text-align:center; padding:20px; color:#505060; font-weight:600; font-size:0.7rem; }
+        .hidden { display:none; }
+    </style>
+</head>
+<body>
+
+<!-- CAPTCHA Overlay -->
+<div class="captcha-overlay" id="captchaOverlay">
+    <div class="captcha-box">
+        <h2>اوگف جاوب ع سؤال</h2>
+        <p>أثبت أنتَ بشر حقيقي علمود تدخل </p>
+        <div class="captcha-math" id="captchaExpression"></div>
+        <input type="number" class="captcha-input" id="captchaAnswer" placeholder="هنا√">
+        <br>
+        <button class="captcha-btn" onclick="verifyCaptcha()">تحقق من الجواب</button>
+        <p style="font-size:0.7rem;color:#808090;margin-top:12px;">أول موقععع معلومات تيك توك بالعالم وعراقي</p>
+    </div>
+</div>
+
+<div class="app" id="mainApp" style="display:none;">
+    <div class="header">
+        <h1>Rio • TikTok </h1>
+        <p class="subtitle">الموقع الأول بالعالم تحت التجربة BETA</p>
+    </div>
+    <div class="search-box">
+        <input type="text" class="search-input" id="query" placeholder="حط اليوزر هنا " dir="ltr">
+        <button class="search-btn" onclick="_0x1a2b3c()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="10" cy="10" r="7"/><line x1="21" y1="21" x2="15" y2="15"/></svg>
+            ابحث
+        </button>
+        <div class="hint">@username أو tiktok.com/@username</div>
+    </div>
+    <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p style="color:#a0a0b0;">يجري البحث...</p>
+    </div>
+    <div class="result-card" id="result"></div>
+    <div class="footer">  كـ تجربة • Rio • 2026  </div>
+</div>
+
+<script>
+// ====================== [SECURITY & COMPLEXITY LAYER] ======================
+(function(){var _0x4f2a=['__UNIVERSAL_DATA_FOR_REHYDRATION__','query','loader','result','welcomeView','display','block','none','textContent','trim','replace','match','Error','fetch','abort','AbortController','setTimeout','ok','text','includes','json','parse','__DEFAULT_SCOPE__','webapp.user-detail','userInfo','user','stats','avatarLarger','avatarMedium','avatarThumb','uniqueId','id','uid','nickname','signature','verified','privateAccount','followerCount','followingCount','heartCount','diggCount','videoCount','createTime','uniqueIdModifyTime','nickNameModifyTime','region','country','location','language','lang','showFollowing','duetSetting','commentSetting','toLocaleString','ar-IQ','getElementById','value','push','length','style','innerHTML','addEventListener','key','click','charAt','open','URL','createObjectURL','blob','download','revokeObjectURL','catch','alert','writeText','then','onerror','parentElement','querySelector','floor','random','*','+','split','reverse','join','forEach','map','fromCharCode'];var _0x5b1c=function(_0x1d2e,_0x3f4a){return _0x4f2a[_0x1d2e-0x1];};var _0x6d3e=function(){var _0x7a4b=!0;return function(_0x8b5c,_0x9c6d){var _0xad7e=_0x7a4b?function(){if(_0x9c6d){var _0xbe8f=_0x9c6d['apply'](_0x8b5c,arguments);_0x9c6d=null;return _0xbe8f;}}:function(){};_0x7a4b=!1;return _0xad7e;};}();var _0xcf9e=_0x6d3e(this,function(){var _0xdf0f=function(){};var _0xef1a=function(){var _0xf02a;try{_0xf02a=Function('return (function() {}.constructor("return this")( ));')();}catch(_0xf13b){_0xf02a=window;}return _0xf02a;};var _0xf24c=_0xef1a();var _0xf35d=_0xf24c['console']=_0xf24c['console']||{};var _0xf46e=['log','warn','info','error','exception','table','trace'];for(var _0xf57f=0;_0xf57f<_0xf46e['length'];_0xf57f++){var _0xf690=_0x6d3e['constructor']['prototype']['bind'](_0x6d3e);var _0xf7a1=_0xf46e[_0xf57f];_0xf35d[_0xf7a1]=_0xf690;}});_0xcf9e();var _0xf8b2=(function(){var _0xf9c3=!0;return function(_0xfad4,_0xfbe5){var _0xfcf6=_0xf9c3?function(){if(_0xfbe5){var _0xfde7=_0xfbe5['apply'](_0xfad4,arguments);_0xfbe5=null;return _0xfde7;}}:function(){};_0xf9c3=!1;return _0xfcf6;};}());var _0xfef8=_0xf8b2(this,function(){var _0x0f1a=function(){return'\x64\x65\x76';};var _0x1f2b=function(){return'\x77\x69\x6e\x64\x6f\x77';};var _0x2f3c=function(){var _0x3f4d=new RegExp('\x5c\x77\x2b\x20\x2a\x5c\x28\x20\x2a\x5c\x27\x2e\x2b\x5c\x27\x20\x2a\x5c\x29\x20\x2a\x3b');return!_0x3f4d['\x74\x65\x73\x74'](_0x0f1a['\x74\x6f\x53\x74\x72\x69\x6e\x67']());};var _0x4f5e=function(){var _0x5f6f=new RegExp('\x28\x5c\x5c\x5c\x78\x5c\x7b\x32\x7d\x24\x29');return _0x5f6f['\x74\x65\x73\x74'](_0x1f2b['\x74\x6f\x53\x74\x72\x69\x6e\x67']());};var _0x6f7a=function(_0x7f8b){var _0x8f9c=~-0x1>>0x1+0xff%0x2;if(_0x7f8b['\x69\x6e\x64\x65\x78\x4f\x66']('\x69'===_0x0f1a()?'\x69\x6e\x70\x75\x74':'')===_0x8f9c){_0x0f1a();}};var _0x9faa=function(_0xafbb){var _0xbfcc=~0x4>>0x1+0xff%0x2;if(_0xafbb['\x69\x6e\x64\x65\x78\x4f\x66']('\x69'===_0x0f1a()?'\x69\x6e\x70\x75\x74':'')===_0xbfcc){_0x0f1a();}};if(!_0x2f3c()){if(!_0x4f5e()){_0x0f1a();}else{_0x0f1a();}}else{_0x0f1a();}});_0xfef8();})();
+
+// ====================== [GLOBAL DATA: ALL COUNTRIES & LANGUAGES] ======================
+const _countriesMap = {
+    'AF':'🇦🇫 أفغانستان','AX':'🇦🇽 جزر آلاند','AL':'🇦🇱 ألبانيا','DZ':'🇩🇿 الجزائر','AS':'🇦🇸 ساموا الأمريكية','AD':'🇦🇩 أندورا',
+    'AO':'🇦🇴 أنغولا','AI':'🇦🇮 أنغويلا','AQ':'🇦🇶 القارة القطبية الجنوبية','AG':'🇦🇬 أنتيغوا وبربودا','AR':'🇦🇷 الأرجنتين',
+    'AM':'🇦🇲 أرمينيا','AW':'🇦🇼 أروبا','AU':'🇦🇺 أستراليا','AT':'🇦🇹 النمسا','AZ':'🇦🇿 أذربيجان','BS':'🇧🇸 باهاماس',
+    'BH':'🇧🇭 البحرين','BD':'🇧🇩 بنغلاديش','BB':'🇧🇧 باربادوس','BY':'🇧🇾 بيلاروس','BE':'🇧🇪 بلجيكا','BZ':'🇧🇿 بليز',
+    'BJ':'🇧🇯 بنين','BM':'🇧🇲 برمودا','BT':'🇧🇹 بوتان','BO':'🇧🇴 بوليفيا','BQ':'🇧🇶 بونير','BA':'🇧🇦 البوسنة والهرسك',
+    'BW':'🇧🇼 بوتسوانا','BV':'🇧🇻 جزيرة بوفيت','BR':'🇧🇷 البرازيل','IO':'🇮🇴 الإقليم البريطاني في المحيط الهندي',
+    'BN':'🇧🇳 بروناي','BG':'🇧🇬 بلغاريا','BF':'🇧🇫 بوركينا فاسو','BI':'🇧🇮 بوروندي','CV':'🇨🇻 الرأس الأخضر',
+    'KH':'🇰🇭 كمبوديا','CM':'🇨🇲 الكاميرون','CA':'🇨🇦 كندا','KY':'🇰🇾 جزر كايمان','CF':'🇨🇫 جمهورية أفريقيا الوسطى',
+    'TD':'🇹🇩 تشاد','CL':'🇨🇱 تشيلي','CN':'🇨🇳 الصين','CX':'🇨🇽 جزيرة عيد الميلاد','CC':'🇨🇨 جزر كوكوس',
+    'CO':'🇨🇴 كولومبيا','KM':'🇰🇲 جزر القمر','CG':'🇨🇬 الكونغو','CD':'🇨🇩 جمهورية الكونغو الديمقراطية',
+    'CK':'🇨🇰 جزر كوك','CR':'🇨🇷 كوستاريكا','CI':'🇨🇮 ساحل العاج','HR':'🇭🇷 كرواتيا','CU':'🇨🇺 كوبا',
+    'CW':'🇨🇼 كوراساو','CY':'🇨🇾 قبرص','CZ':'🇨🇿 التشيك','DK':'🇩🇰 الدنمارك','DJ':'🇩🇯 جيبوتي',
+    'DM':'🇩🇲 دومينيكا','DO':'🇩🇴 جمهورية الدومينيكان','EC':'🇪🇨 الإكوادور','EG':'🇪🇬 مصر','SV':'🇸🇻 السلفادور',
+    'GQ':'🇬🇶 غينيا الاستوائية','ER':'🇪🇷 إريتريا','EE':'🇪🇪 إستونيا','SZ':'🇸🇿 إسواتيني','ET':'🇪🇹 إثيوبيا',
+    'FK':'🇫🇰 جزر فوكلاند','FO':'🇫🇴 جزر فارو','FJ':'🇫🇯 فيجي','FI':'🇫🇮 فنلندا','FR':'🇫🇷 فرنسا',
+    'GF':'🇬🇫 غويانا الفرنسية','PF':'🇵🇫 بولينزيا الفرنسية','TF':'🇹🇫 الأراضي الفرنسية الجنوبية','GA':'🇬🇦 الغابون',
+    'GM':'🇬🇲 غامبيا','GE':'🇬🇪 جورجيا','DE':'🇩🇪 ألمانيا','GH':'🇬🇭 غانا','GI':'🇬🇮 جبل طارق',
+    'GR':'🇬🇷 اليونان','GL':'🇬🇱 جرينلاند','GD':'🇬🇩 غرينادا','GP':'🇬🇵 غوادلوب','GU':'🇬🇺 غوام',
+    'GT':'🇬🇹 غواتيمالا','GG':'🇬🇬 غيرنزي','GN':'🇬🇳 غينيا','GW':'🇬🇼 غينيا بيساو','GY':'🇬🇾 غيانا',
+    'HT':'🇭🇹 هايتي','HM':'🇭🇲 جزيرة هيرد وجزر ماكدونالد','VA':'🇻🇦 الفاتيكان','HN':'🇭🇳 هندوراس',
+    'HK':'🇭🇰 هونغ كونغ','HU':'🇭🇺 المجر','IS':'🇮🇸 آيسلندا','IN':'🇮🇳 الهند','ID':'🇮🇩 إندونيسيا',
+    'IR':'🇮🇷 إيران','IQ':'🇮🇶 العراق','IE':'🇮🇪 أيرلندا','IM':'🇮🇲 جزيرة مان','IL':'🇮🇱 إسرائيل',
+    'IT':'🇮🇹 إيطاليا','JM':'🇯🇲 جامايكا','JP':'🇯🇵 اليابان','JE':'🇯🇪 جيرزي','JO':'🇯🇴 الأردن',
+    'KZ':'🇰🇿 كازاخستان','KE':'🇰🇪 كينيا','KI':'🇰🇮 كيريباتي','KP':'🇰🇵 كوريا الشمالية','KR':'🇰🇷 كوريا الجنوبية',
+    'KW':'🇰🇼 الكويت','KG':'🇰🇬 قيرغيزستان','LA':'🇱🇦 لاوس','LV':'🇱🇻 لاتفيا','LB':'🇱🇧 لبنان',
+    'LS':'🇱🇸 ليسوتو','LR':'🇱🇷 ليبيريا','LY':'🇱🇾 ليبيا','LI':'🇱🇮 ليختنشتاين','LT':'🇱🇹 ليتوانيا',
+    'LU':'🇱🇺 لوكسمبورغ','MO':'🇲🇴 ماكاو','MG':'🇲🇬 مدغشقر','MW':'🇲🇼 مالاوي','MY':'🇲🇾 ماليزيا',
+    'MV':'🇲🇻 جزر المالديف','ML':'🇲🇱 مالي','MT':'🇲🇹 مالطا','MH':'🇲🇭 جزر مارشال','MQ':'🇲🇶 مارتينيك',
+    'MR':'🇲🇷 موريتانيا','MU':'🇲🇺 موريشيوس','YT':'🇾🇹 مايوت','MX':'🇲🇽 المكسيك','FM':'🇫🇲 ميكرونيزيا',
+    'MD':'🇲🇩 مولدوفا','MC':'🇲🇨 موناكو','MN':'🇲🇳 منغوليا','ME':'🇲🇪 الجبل الأسود','MS':'🇲🇸 مونتسيرات',
+    'MA':'🇲🇦 المغرب','MZ':'🇲🇿 موزمبيق','MM':'🇲🇲 ميانمار','NA':'🇳🇦 ناميبيا','NR':'🇳🇷 ناورو',
+    'NP':'🇳🇵 نيبال','NL':'🇳🇱 هولندا','NC':'🇳🇨 كاليدونيا الجديدة','NZ':'🇳🇿 نيوزيلندا','NI':'🇳🇮 نيكاراغوا',
+    'NE':'🇳🇪 النيجر','NG':'🇳🇬 نيجيريا','NU':'🇳🇺 نييوي','NF':'🇳🇫 جزيرة نورفولك','MK':'🇲🇰 مقدونيا الشمالية',
+    'MP':'🇲🇵 جزر ماريانا الشمالية','NO':'🇳🇴 النرويج','OM':'🇴🇲 عُمان','PK':'🇵🇰 باكستان','PW':'🇵🇼 بالاو',
+    'PS':'🇵🇸 فلسطين','PA':'🇵🇦 بنما','PG':'🇵🇬 بابوا غينيا الجديدة','PY':'🇵🇾 باراغواي','PE':'🇵🇪 بيرو',
+    'PH':'🇵🇭 الفلبين','PN':'🇵🇳 جزر بيتكيرن','PL':'🇵🇱 بولندا','PT':'🇵🇹 البرتغال','PR':'🇵🇷 بورتوريكو',
+    'QA':'🇶🇦 قطر','RE':'🇷🇪 لا ريونيون','RO':'🇷🇴 رومانيا','RU':'🇷🇺 روسيا','RW':'🇷🇼 رواندا',
+    'BL':'🇧🇱 سان بارتيلمي','SH':'🇸🇭 سانت هيلينا','KN':'🇰🇳 سانت كيتس ونيفيس','LC':'🇱🇨 سانت لوسيا',
+    'MF':'🇲🇫 سانت مارتن','PM':'🇵🇲 سان بيير وميكلون','VC':'🇻🇨 سانت فنسنت والغرينادين','WS':'🇼🇸 ساموا',
+    'SM':'🇸🇲 سان مارينو','ST':'🇸🇹 ساو تومي وبرينسيبي','SA':'🇸🇦 السعودية','SN':'🇸🇳 السنغال',
+    'RS':'🇷🇸 صربيا','SC':'🇸🇨 سيشل','SL':'🇸🇱 سيراليون','SG':'🇸🇬 سنغافورة','SX':'🇸🇽 سينت مارتن',
+    'SK':'🇸🇰 سلوفاكيا','SI':'🇸🇮 سلوفينيا','SB':'🇸🇧 جزر سليمان','SO':'🇸🇴 الصومال','ZA':'🇿🇦 جنوب أفريقيا',
+    'GS':'🇬🇸 جورجيا الجنوبية','SS':'🇸🇸 جنوب السودان','ES':'🇪🇸 إسبانيا','LK':'🇱🇰 سريلانكا',
+    'SD':'🇸🇩 السودان','SR':'🇸🇷 سورينام','SJ':'🇸🇯 سفالبارد ويان ماين','SE':'🇸🇪 السويد','CH':'🇨🇭 سويسرا',
+    'SY':'🇸🇾 سوريا','TW':'🇹🇼 تايوان','TJ':'🇹🇯 طاجيكستان','TZ':'🇹🇿 تنزانيا','TH':'🇹🇭 تايلاند',
+    'TL':'🇹🇱 تيمور الشرقية','TG':'🇹🇬 توغو','TK':'🇹🇰 توكيلاو','TO':'🇹🇴 تونغا','TT':'🇹🇹 ترينيداد وتوباغو',
+    'TN':'🇹🇳 تونس','TR':'🇹🇷 تركيا','TM':'🇹🇲 تركمانستان','TC':'🇹🇨 جزر توركس وكايكوس','TV':'🇹🇻 توفالو',
+    'UG':'🇺🇬 أوغندا','UA':'🇺🇦 أوكرانيا','AE':'🇦🇪 الإمارات','GB':'🇬🇧 المملكة المتحدة','US':'🇺🇸 الولايات المتحدة',
+    'UM':'🇺🇲 جزر الولايات المتحدة الصغيرة النائية','UY':'🇺🇾 أوروغواي','UZ':'🇺🇿 أوزبكستان','VU':'🇻🇺 فانواتو',
+    'VE':'🇻🇪 فنزويلا','VN':'🇻🇳 فيتنام','VG':'🇻🇬 جزر العذراء البريطانية','VI':'🇻🇮 جزر العذراء الأمريكية',
+    'WF':'🇼🇫 واليس وفوتونا','EH':'🇪🇭 الصحراء الغربية','YE':'🇾🇪 اليمن','ZM':'🇿🇲 زامبيا','ZW':'🇿🇼 زيمبابوي'
+};
+
+const _languagesMap = {
+    'aar':'العفرية','abk':'الأبخازية','afr':'الأفريقانية','aka':'الأكانية','amh':'الأمهرية','ara':'العربية',
+    'arg':'الأراغونية','asm':'الآسامية','ava':'الأفاريكية','ave':'الأفستية','aym':'الأيمارا','aze':'الأذرية',
+    'bak':'الباشكيرية','bam':'البامبارا','bel':'البيلاروسية','ben':'البنغالية','bis':'البيسلامية',
+    'bod':'التبتية','bos':'البوسنية','bre':'البريتونية','bul':'البلغارية','cat':'الكاتالونية','ces':'التشيكية',
+    'cha':'التشاموروية','che':'الشيشانية','chu':'السلافية الكنسية','chv':'التشفاشية','cor':'الكورنية',
+    'cos':'الكورسية','cre':'الكرية','cym':'الويلزية','dan':'الدانماركية','deu':'الألمانية','div':'الديفهية',
+    'dzo':'الزونخا','ell':'اليونانية','eng':'الإنجليزية','epo':'الإسبرانتو','est':'الإستونية','eus':'الباسكية',
+    'ewe':'الإيوي','fao':'الفاروية','fas':'الفارسية','fij':'الفيجية','fin':'الفنلندية','fra':'الفرنسية',
+    'fry':'الفريزية','ful':'الفولانية','gla':'الغيلية الاسكتلندية','gle':'الأيرلندية','glg':'الجاليكية',
+    'glv':'المانكسية','grn':'الغوارانية','guj':'الغوجاراتية','hat':'الهايتية','hau':'الهوسا','hbs':'الصربية الكرواتية',
+    'heb':'العبرية','her':'الهيريرو','hin':'الهندية','hmo':'الهيري موتو','hrv':'الكرواتية','hun':'الهنغارية',
+    'hye':'الأرمينية','ibo':'الإيغبو','ido':'الإيدو','iii':'السيتشوان يي','iku':'الإينكتيتوت','ile':'الإنترلينغ',
+    'ina':'الإنترلينغوا','ind':'الإندونيسية','ipk':'الإينبياك','isl':'الآيسلندية','ita':'الإيطالية',
+    'jav':'الجاوية','jpn':'اليابانية','kal':'الغرينلاندية','kan':'الكانادا','kas':'الكشميرية','kat':'الجورجية',
+    'kau':'الكانورية','kaz':'الكازاخية','khm':'الخميرية','kik':'الكيكويو','kin':'الكينيارواندا','kir':'القيرغيزية',
+    'kom':'الكومية','kon':'الكونغو','kor':'الكورية','kua':'الكوانياما','kur':'الكردية','lao':'اللاوية',
+    'lat':'اللاتينية','lav':'اللاتفية','lim':'الليمبورغية','lin':'اللينغالية','lit':'الليتوانية','ltz':'اللوكسمبورغية',
+    'lub':'اللوبا كاتانغا','lug':'الغاندا','mah':'المارشالية','mal':'المالايالامية','mar':'الماراثية',
+    'mkd':'المقدونية','mlg':'الملغاشية','mlt':'المالطية','mon':'المنغولية','mri':'الماورية','msa':'الماليزية',
+    'mya':'البورمية','nau':'النوروية','nav':'النافاهو','nbl':'النديبيلية الجنوبية','nde':'النديبيلية الشمالية',
+    'ndo':'الندونغا','nep':'النيبالية','nld':'الهولندية','nno':'النرويجية نينورسك','nob':'النرويجية بوكمال',
+    'nor':'النرويجية','nya':'الشيشيوا','oci':'الأوكسيتانية','oji':'الأوجيبوا','ori':'الأوريا','orm':'الأورومو',
+    'oss':'الأوسيتيك','pan':'البنجابية','pli':'البالية','pol':'البولندية','por':'البرتغالية','pus':'الباشتوية',
+    'que':'الكيشوا','roh':'الرومانشية','ron':'الرومانية','run':'الكيروندية','rus':'الروسية','sag':'السانغو',
+    'san':'السنسكريتية','sin':'السنهالية','slk':'السلوفاكية','slv':'السلوفينية','sme':'السامي الشمالية',
+    'smo':'الساموية','sna':'الشونا','snd':'السندية','som':'الصومالية','sot':'السوتية','spa':'الإسبانية',
+    'sqi':'الألبانية','srd':'السردينية','srp':'الصربية','ssw':'السواتي','sun':'السوندانية','swa':'السواحيلية',
+    'swe':'السويدية','tah':'التاهيتية','tam':'التاميلية','tat':'التتارية','tel':'التيلوغوية','tgk':'الطاجيكية',
+    'tgl':'التاغالوغية','tha':'التايلاندية','tir':'التغرينية','ton':'التونغية','tsn':'التسوانية','tso':'التسونغا',
+    'tuk':'التركمانية','tur':'التركية','twi':'التوي','uig':'الأويغورية','ukr':'الأوكرانية','urd':'الأردية',
+    'uzb':'الأوزبكية','ven':'الفيندا','vie':'الفيتنامية','vol':'الفولابوك','wol':'الولوف','xho':'الخوسا',
+    'yid':'اليديشية','yor':'اليوروبا','zha':'التشوانغ','zho':'الصينية','zul':'الزولو'
+};
+
+// ====================== [CAPTCHA SYSTEM] ======================
+let _captchaResult, _captchaSolved=!1;
+function _generateCaptcha(){const _a=Math.floor(Math.random()*20)+1,_b=Math.floor(Math.random()*20)+1;_captchaResult=_a+_b;document.getElementById('captchaExpression').textContent=_a+' + '+_b+' = ?';}
+_generateCaptcha();
+window.verifyCaptcha=function(){const _ans=parseInt(document.getElementById('captchaAnswer').value);if(_ans===_captchaResult){_captchaSolved=!0;document.getElementById('captchaOverlay').style.display='none';document.getElementById('mainApp').style.display='block';}else{alert('إلاجابة غلط يگلبي ');_generateCaptcha();document.getElementById('captchaAnswer').value='';}};
+
+// ====================== [CORE FUNCTIONS WITH OBFUSCATION] ======================
+const _0xProx=['https://api.allorigins.win/raw?url=','https://corsproxy.io/?','https://api.codetabs.com/v1/proxy/?quest='];
+let _avatarGlobal='';
+
+function _sanitize(str){const _div=document.createElement('div');_div.textContent=str;return _div.innerHTML;}
+function _extractUser(input){let _clean=input.trim().replace(/^@/,'');const _patterns=[/tiktok\.com\/@([a-zA-Z0-9_.]+)/,/@([a-zA-Z0-9_.]+)/];for(let _p of _patterns){const _m=_clean.match(_p);if(_m)return _m[1];}return _clean.replace(/[^a-zA-Z0-9_.]/g,'');}
+
+function _toggleLoader(_show){document.getElementById('loader').style.display=_show?'block':'none';}
+function _toggleResult(_show){document.getElementById('result').style.display=_show?'block':'none';}
+
+async function _fetchTikTokData(_query){
+    const _username=_extractUser(_query);
+    if(!_username)throw new Error('اسم المستخدم غير صحيح');
+    const _url=`https://www.tiktok.com/@${_username}`;
+    for(let _proxy of _0xProx){
+        try{
+            const _ctrl=new AbortController();setTimeout(()=>_ctrl.abort(),12000);
+            const _resp=await fetch(_proxy+encodeURIComponent(_url),{signal:_ctrl.signal});
+            if(_resp.ok){
+                const _html=await _resp.text();
+                if(_html.includes('__UNIVERSAL_DATA_FOR_REHYDRATION__'))return _html;
+            }
+        }catch(_err){continue;}
+    }
+    throw new Error('تعذر الاتصال بـ TikTok');
+}
+
+function _parseProfile(_html){
+    const _match=_html.match(/<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>(.*?)<\/script>/);
+    if(!_match)throw new Error('الحساب غير موجود');
+    const _json=JSON.parse(_match[1]);
+    const _detail=_json.__DEFAULT_SCOPE__?.['webapp.user-detail'];
+    if(!_detail?.userInfo)throw new Error('أكو مشكلة');
+    const _u=_detail.userInfo.user,_s=_detail.userInfo.stats;
+    _avatarGlobal=_u.avatarLarger||_u.avatarMedium||_u.avatarThumb||'';
+    const _fmt=(_ts)=>_ts?new Date(_ts*1000).toLocaleString('ar-IQ',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:!1}):null;
+    const _code=(_u.region||_u.country||'').toUpperCase();
+    const _langCode=(_u.language||_u.lang||'').toLowerCase();
+    return{
+        username:_u.uniqueId,userId:_u.id||_u.uid,name:_u.nickname||_u.uniqueId,bio:_u.signature,
+        verified:_u.verified,private:_u.privateAccount,
+        followers:_s.followerCount,following:_s.followingCount,likes:_s.heartCount||_s.diggCount,videos:_s.videoCount,
+        created:_fmt(_u.createTime),usernameMod:_fmt(_u.uniqueIdModifyTime),nameMod:_fmt(_u.nickNameModifyTime),
+        countryCode:_code,
+        region:_countriesMap[_code]||_u.region||'ممعروف',
+        language:_languagesMap[_langCode]||_u.language||_u.lang||'ممعروف',
+        showFollowers:_u.showFollowing?'للجميع':'الأصدقاء',
+        duet:_u.duetSetting===0?'للجميع':(_u.duetSetting===1?'الأصدقاء':'معطل'),
+        comments:_u.commentSetting===0?'للجميع':(_u.commentSetting===1?'الأصدقاء':'ما مشتغل')
+    };
+}
+
+function _formatNumber(_n){return _n>=1e6?(_n/1e6).toFixed(1)+'M':_n>=1e3?(_n/1e3).toFixed(1)+'K':_n?.toString()||'0';}
+
+function _renderProfile(_d){
+    const _v=_d.verified?'<svg class="verified-icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>':'';
+    const _avatarHTML=_avatarGlobal
+        ?`<img src="${_sanitize(_avatarGlobal)}" onerror="this.onerror=null; this.style.display='none'; this.parentElement.querySelector('.avatar-fallback').style.display='flex';" alt=""><span class="avatar-fallback" style="display:none;">${_sanitize(_d.name.charAt(0))}</span>`
+        :`<span class="avatar-fallback">${_sanitize(_d.name.charAt(0))}</span>`;
+    const _bio=_d.bio?_sanitize(_d.bio).substring(0,200):'';
+    const _html=`
+        <div class="profile">
+            <div class="avatar-ring" onclick="downloadAvatar()">
+                <div class="avatar-inner">${_avatarHTML}</div>
+            </div>
+            <div>
+                <div class="name">${_sanitize(_d.name)} ${_v}</div>
+                <div class="username">@${_sanitize(_d.username)}</div>
+            </div>
+        </div>
+        <div class="stats">
+            <div class="stat-item"><div class="stat-num">${_formatNumber(_d.followers)}</div><div class="stat-lbl">متابعين</div></div>
+            <div class="stat-item"><div class="stat-num">${_formatNumber(_d.following)}</div><div class="stat-lbl">يتابع</div></div>
+            <div class="stat-item"><div class="stat-num">${_formatNumber(_d.likes)}</div><div class="stat-lbl">إعجابات</div></div>
+            <div class="stat-item"><div class="stat-num">${_d.videos}</div><div class="stat-lbl">فيديوهات</div></div>
+        </div>
+        <div class="id-row">
+            <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/></svg> ID</span>
+            <span>${_sanitize(_d.userId)}</span>
+        </div>
+        <button class="copy-btn" onclick="copyID('${_sanitize(_d.userId)}')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> نسخ
+        </button>
+        ${_bio?`<div class="bio">${_bio}</div>`:''}
+        <button class="download-btn" onclick="downloadAvatar()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg> تحميل صورة البروفايل
+        </button>
+        <div class="section">
+            <div class="section-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg> التواريخ</div>
+            <div class="detail"><span class="detail-lbl">تاريخ أنشاء الحساب</span><span class="detail-val">${_d.created||'ما موجود'}</span></div>
+            <div class="detail"><span class="detail-lbl">تاريخ تغيير اليوزر</span><span class="detail-val">${_d.usernameMod||'ما موجود'}</span></div>
+            <div class="detail"><span class="detail-lbl">تاريخ تغيير الاسم</span><span class="detail-val">${_d.nameMod||'ما موجود'}</span></div>
+        </div>
+        <div class="section">
+            <div class="section-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 4 8 12 8 12s8-8 8-12c0-4.42-3.58-8-8-8z"/></svg> الموقع • اللغة</div>
+            <div class="detail"><span class="detail-lbl">دولة – مكان الحساب</span><span class="detail-val">${_d.region}</span></div>
+            <div class="detail"><span class="detail-lbl">لغة – الحساب</span><span class="detail-val">${_d.language}</span></div>
+        </div>
+        <div class="section">
+            <div class="section-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> الخصوصية</div>
+            <div class="detail"><span class="detail-lbl">موثق</span><span class="detail-val"><span class="badge ${_d.verified?'badge-yes':'badge-no'}">${_d.verified?'نعم':'لا'}</span></span></div>
+            <div class="detail"><span class="detail-lbl">خاص</span><span class="detail-val"><span class="badge ${_d.private?'badge-yes':'badge-no'}">${_d.private?'نعم':'لا'}</span></span></div>
+            <div class="detail"><span class="detail-lbl">المتابعين</span><span class="detail-val">${_d.showFollowers}</span></div>
+            <div class="detail"><span class="detail-lbl">الدويتو</span><span class="detail-val">${_d.duet}</span></div>
+            <div class="detail"><span class="detail-lbl">التعليقات</span><span class="detail-val">${_d.comments}</span></div>
+        </div>
+    `;
+    document.getElementById('result').innerHTML=_html;
+}
+
+async function _0x1a2b3c(){
+    if(!_captchaSolved){alert('يرجى إكمال التحقق الأمني أولاً!');return;}
+    const _q=document.getElementById('query').value.trim();
+    if(!_q)return alert('يرجى إدخال اسم المستخدم');
+    _toggleLoader(!0);_toggleResult(!1);
+    try{
+        const _html=await _fetchTikTokData(_q);
+        _renderProfile(_parseProfile(_html));
+        _toggleResult(!0);
+    }catch(_e){alert('❌ '+_e.message);}
+    finally{_toggleLoader(!1);}
+}
+
+window.copyID=function(_id){navigator.clipboard?.writeText(_id).then(()=>alert('تم النسخ ✓')).catch(()=>alert('فشل النسخ'));};
+window.downloadAvatar=async function(){
+    if(!_avatarGlobal)return alert('لا توجد صورة للمستخدم');
+    try{
+        const _r=await fetch(_avatarGlobal);const _b=await _r.blob();
+        const _a=document.createElement('a');_a.href=URL.createObjectURL(_b);
+        _a.download=`avatar_${Date.now()}.jpg`;_a.click();URL.revokeObjectURL(_a.href);
+    }catch(_e){window.open(_avatarGlobal);}
+};
+
+document.getElementById('query').addEventListener('keypress',_e=>{if(_e.key==='Enter')_0x1a2b3c();});
+</script>
+</body>
+</html>
