@@ -103,6 +103,9 @@ body{
 .qr{text-align:center;padding:6px 0 18px}
 .qr img{border-radius:14px;border:1px solid var(--line);background:#fff;padding:8px;width:150px;height:150px}
 .qr p{font-size:12px;color:var(--mut);margin-top:8px}
+.lim{display:inline-block;margin-top:10px;font-size:12.5px;padding:6px 14px;border-radius:999px;
+  background:rgba(255,180,0,.12);color:#ffcf5c;border:1px solid rgba(255,180,0,.35)}
+.note{color:var(--mut);font-size:13px;line-height:1.9;margin:12px 4px 0}
 .sec-t{font-size:14px;font-weight:900;margin:16px 18px 4px;display:flex;align-items:center;gap:8px}
 .sec-t::before{content:"";width:4px;height:16px;border-radius:4px;background:var(--grad)}
 /* footer */
@@ -171,7 +174,8 @@ body{
     <div class="sk" style="height:120px;margin-top:12px"></div>
   </div>
 
-  <div class="err" id="errBox" hidden>⚠️<div id="errMsg" style="margin-top:8px"></div></div>
+  <div class="err" id="errBox" hidden>⚠️<div id="errMsg" style="margin-top:8px"></div>
+  <button class="btn btn-p" style="margin-top:14px;padding:11px 26px" onclick="doSearch()">🔄 إعادة المحاولة</button></div>
 
   <section class="res" id="result" hidden></section>
 
@@ -263,6 +267,18 @@ async function fetchPage(url){
   }
   throw lastErr||new Error('فشل الاتصال');
 }
+async function fetchOEmbed(u){
+  const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),15000);
+  try{
+    const r=await fetch('https://www.tiktok.com/oembed?url='+encodeURIComponent('https://www.tiktok.com/@'+u),{signal:ctrl.signal});
+    clearTimeout(to);
+    if(r.status===404)throw new Error('NOT_FOUND');
+    if(!r.ok)throw new Error('فشل الاتصال');
+    const j=await r.json();
+    if(!j.author_name)throw new Error('NOT_FOUND');
+    return {name:j.author_name,username:u,url:j.author_url||('https://www.tiktok.com/@'+u)};
+  }catch(e){clearTimeout(to);throw e;}
+}
 const countriesMap={IQ:'العراق 🇮🇶',SA:'السعودية 🇸🇦',EG:'مصر 🇪🇬',AE:'الإمارات 🇦🇪',KW:'الكويت 🇰🇼',QA:'قطر 🇶🇦',BH:'البحرين 🇧🇭',OM:'عمان 🇴🇲',JO:'الأردن 🇯🇴',LB:'لبنان 🇱🇧',SY:'سوريا 🇸🇾',YE:'اليمن 🇾🇪',TR:'تركيا 🇹🇷',IR:'إيران 🇮🇷',US:'أمريكا 🇺🇸',GB:'بريطانيا 🇬🇧',DE:'ألمانيا 🇩🇪',FR:'فرنسا 🇫🇷',CA:'كندا 🇨🇦',AU:'أستراليا 🇦🇺',IN:'الهند 🇮🇳',PK:'باكستان 🇵🇰',PH:'الفلبين 🇵🇭',ID:'إندونيسيا 🇮🇩',MY:'ماليزيا 🇲🇾',RU:'روسيا 🇷🇺',UA:'أوكرانيا 🇺🇦',BR:'البرازيل 🇧🇷',ES:'إسبانيا 🇪🇸',IT:'إيطاليا 🇮🇹',NL:'هولندا 🇳🇱',SE:'السويد 🇸🇪',KR:'كوريا 🇰🇷',JP:'اليابان 🇯🇵',CN:'الصين 🇨🇳'};
 const langsMap={ar:'العربية',en:'الإنجليزية',fr:'الفرنسية',es:'الإسبانية',tr:'التركية',de:'الألمانية',ru:'الروسية',fa:'الفارسية',ur:'الأردية',hi:'الهندية',ku:'الكردية'};
 function parseProfile(html){
@@ -280,12 +296,15 @@ function parseProfile(html){
     verified:!!u.verified,private:!!u.privateAccount,
     followers:fol,following:s.followingCount||0,likes:lik,videos:vid,
     avgLikes:vid?Math.round(lik/vid):0,
-    engRate:fol?Math.min(100,(lik/Math.max(1,fol)*100)):0,
+    engRate:(fol&&vid)?Math.min(100,(Math.round(lik/vid)/fol*100)):0,
     created:fmtT(u.createTime),region:countriesMap[cc]||u.region||'غير محدد',
     language:langsMap[lc]||u.language||'غير محدد',
     duet:u.duetSetting===0?'للجميع':(u.duetSetting===1?'للأصدقاء':'معطل'),
     comments:u.commentSetting===0?'للجميع':(u.commentSetting===1?'للأصدقاء':'معطل'),
     stitch:u.stitchSetting===0?'للجميع':(u.stitchSetting===1?'للأصدقاء':'معطل'),
+    download:u.downloadSetting===0?'للجميع':(u.downloadSetting===1?'للأصدقاء':'معطل'),
+    friends:s.friendCount||0,
+    commerce:(u.commerceUserInfo&&u.commerceUserInfo.commerceUser)?('نعم'+(u.commerceUserInfo.category?(' • '+u.commerceUserInfo.category):'')):'لا',
     device:u.deviceType===1?'آيفون 📱':(u.deviceType===2?'أندرويد 🤖':'غير معروف')
   };
 }
@@ -326,7 +345,7 @@ function renderProfile(d){
   <div class="sec-t">تحليل سريع</div>
   <div class="ins">
     <div class="irow"><span>متوسط الإعجابات / فيديو</span><b>${fmtN(d.avgLikes)}</b></div>
-    <div class="irow"><span>معدل التفاعل التقريبي</span><b>${eng}%</b></div>
+    <div class="irow"><span>معدل التفاعل (تقديري)</span><b>${eng}%</b></div>
     <div class="bar"><i style="width:${Math.min(100,eng)}%"></i></div>
   </div>
   <div class="sec-t">تفاصيل الحساب</div>
@@ -338,10 +357,39 @@ function renderProfile(d){
     <div class="drow"><span class="dk">💬 التعليقات</span><span class="dv">${esc(d.comments)}</span></div>
     <div class="drow"><span class="dk">🎭 الدويتو</span><span class="dv">${esc(d.duet)}</span></div>
     <div class="drow"><span class="dk">✂️ الستيتش</span><span class="dv">${esc(d.stitch)}</span></div>
+    <div class="drow"><span class="dk">⬇️ تحميل الفيديوهات</span><span class="dv">${esc(d.download)}</span></div>
+    <div class="drow"><span class="dk">🤝 الأصدقاء</span><span class="dv">${fmtN(d.friends)}</span></div>
+    <div class="drow"><span class="dk">🏪 حساب تجاري</span><span class="dv">${esc(d.commerce)}</span></div>
     <div class="drow"><span class="dk">📅 إنشاء الحساب</span><span class="dv">${esc(d.created)}</span></div>
   </div>
   <div class="qr">
     <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(av)}" alt="QR" loading="lazy">
+    <p>امسح للفتح في تيك توك</p>
+  </div>`;
+  $('result').hidden=false;
+  $('result').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderLimited(o){
+  lastData={username:o.username,name:o.name,limited:true};
+  avatarHD='';
+  const initials=esc((o.name||o.username||'?').trim().charAt(0));
+  const url='https://www.tiktok.com/@'+o.username;
+  $('result').innerHTML=`
+  <div class="phead">
+    <div class="ava"><span class="af">${initials}</span></div>
+    <div class="pname">${esc(o.name)}</div>
+    <div class="uname">@${esc(o.username)}</div>
+    <span class="lim">⚡ وضع سريع — الإحصائيات محجوبة مؤقتاً</span>
+    <div class="note">تيك توك يحظر الخوادم الوسيطة أحياناً، لكن تم التأكد أن الحساب <b style="color:var(--cyan)">موجود</b>.<br>جرّب الجلب الكامل مجدداً.</div>
+  </div>
+  <div class="acts">
+    <button class="btn btn-p full" onclick="openTikTok()">فتح في تيك توك ↗</button>
+    <button class="btn btn-g full" onclick="doSearch(true)">🔄 محاولة الجلب الكامل</button>
+    <button class="btn btn-g" onclick="copyLink()">🔗 نسخ الرابط</button>
+    <button class="btn btn-g" onclick="shareMe()">📤 مشاركة</button>
+  </div>
+  <div class="qr">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}" alt="QR" loading="lazy">
     <p>امسح للفتح في تيك توك</p>
   </div>`;
   $('result').hidden=false;
@@ -380,7 +428,7 @@ async function dlAvatar(){
 }
 
 /* ================= البحث ================= */
-async function doSearch(){
+async function doSearch(forceFull){
   const q=$('query').value;hideAll();
   let u=extractUsername(q);
   if(!u){showErr('اكتب اسم مستخدم صحيح مثل @rio');return;}
@@ -394,8 +442,16 @@ async function doSearch(){
     const d=parseProfile(html);
     addHist(d.username,avatarHD);
     renderProfile(d);
-  }catch(e){
-    showErr(e.message||'حدث خطأ، حاول مجدداً');
+  }catch(e1){
+    if(forceFull){showErr('تعذر الجلب الكامل حالياً — حاول بعد قليل');$('loader').hidden=true;return;}
+    try{
+      const o=await fetchOEmbed(u);
+      addHist(o.username,'');
+      renderLimited(o);
+      toast('وضع سريع: تم العثور على الحساب');
+    }catch(e2){
+      showErr(e2.message==='NOT_FOUND'||/غير موجود/.test(e1.message)?'الحساب غير موجود — تأكد من الاسم':'تعذر الاتصال — تحقق من الإنترنت وحاول مجدداً');
+    }
   }finally{$('loader').hidden=true;}
 }
 function hideAll(){$('result').hidden=true;$('errBox').hidden=true;}
