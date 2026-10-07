@@ -150,7 +150,7 @@ body{
 <div class="app" id="app" hidden>
   <div class="hdr">
     <div class="logo"><div class="mk">R</div><h1>Rio</h1></div>
-    <div class="tag">كاشف حسابات تيك توك • <b>v2.3</b></div>
+    <div class="tag">كاشف حسابات تيك توك • <b>v2.4</b></div>
   </div>
 
   <div class="search">
@@ -236,9 +236,10 @@ renderHist();
 
 /* ================= الجلب ================= */
 const PROXIES=[
-  u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
-  u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u),
-  u=>'https://corsproxy.io/?'+encodeURIComponent(u)
+  {f:u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),json:false},
+  {f:u=>'https://api.allorigins.win/get?url='+encodeURIComponent(u),json:true},
+  {f:u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u),json:false},
+  {f:u=>'https://corsproxy.io/?'+encodeURIComponent(u),json:false},
 ];
 let avatarHD='';
 function extractUsername(q){
@@ -254,24 +255,31 @@ async function resolveShort(id){
   const url='https://vm.tiktok.com/'+id+'/';
   for(const p of PROXIES){
     try{
-      const r=await fetch(p(url),{method:'HEAD',redirect:'follow'});
+      const r=await fetch(p.f(url),{method:'HEAD',redirect:'follow'});
       const m=(r.url||'').match(/tiktok\.com\/@([\w.\-]+)/i);
       if(m)return m[1];
     }catch(e){}
   }
   throw new Error('تعذر حل الرابط المختصر');
 }
+async function fetchVia(p,url){
+  const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),30000);
+  try{
+    const r=await fetch(p.f(url),{signal:ctrl.signal}); clearTimeout(to);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const t=p.json?((await r.json()).contents||''):await r.text();
+    if(!t||t.length<5000)throw new Error('رد فارغ');
+    return t;
+  }catch(e){clearTimeout(to);throw e;}
+}
 async function fetchPage(url){
   let lastErr=null;
-  for(const p of PROXIES){
-    try{
-      const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),25000);
-      const r=await fetch(p(url),{signal:ctrl.signal}); clearTimeout(to);
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      const t=await r.text();
-      if(t.length<5000)throw new Error('رد فارغ');
-      return t;
-    }catch(e){lastErr=e;}
+  for(let round=0;round<2;round++){
+    const order=[...PROXIES].sort(()=>Math.random()-.5);
+    for(const p of order){
+      try{return await fetchVia(p,url);}
+      catch(e){lastErr=e;}
+    }
   }
   throw lastErr||new Error('فشل الاتصال');
 }
