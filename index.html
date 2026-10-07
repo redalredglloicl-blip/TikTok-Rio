@@ -106,6 +106,7 @@ body{
 .lim{display:inline-block;margin-top:10px;font-size:12.5px;padding:6px 14px;border-radius:999px;
   background:rgba(255,180,0,.12);color:#ffcf5c;border:1px solid rgba(255,180,0,.35)}
 .note{color:var(--mut);font-size:13px;line-height:1.9;margin:12px 4px 0}
+.tt-embed-wrap{padding:6px 18px 0}.tt-embed-wrap blockquote{margin:0 auto !important}
 .sec-t{font-size:14px;font-weight:900;margin:16px 18px 4px;display:flex;align-items:center;gap:8px}
 .sec-t::before{content:"";width:4px;height:16px;border-radius:4px;background:var(--grad)}
 /* footer */
@@ -149,7 +150,7 @@ body{
 <div class="app" id="app" hidden>
   <div class="hdr">
     <div class="logo"><div class="mk">R</div><h1>Rio</h1></div>
-    <div class="tag">كاشف حسابات تيك توك • <b>v2.2</b></div>
+    <div class="tag">كاشف حسابات تيك توك • <b>v2.3</b></div>
   </div>
 
   <div class="search">
@@ -311,7 +312,7 @@ async function fetchOEmbed(u){
     if(!r.ok)throw new Error('فشل الاتصال');
     const j=await r.json();
     if(!j.author_name)throw new Error('NOT_FOUND');
-    return {name:j.author_name,username:u,url:j.author_url||('https://www.tiktok.com/@'+u)};
+    return {name:j.author_name,username:u,url:j.author_url||('https://www.tiktok.com/@'+u),html:j.html||''};
   }catch(e){clearTimeout(to);throw e;}
 }
 const countriesMap={IQ:'العراق 🇮🇶',SA:'السعودية 🇸🇦',EG:'مصر 🇪🇬',AE:'الإمارات 🇦🇪',KW:'الكويت 🇰🇼',QA:'قطر 🇶🇦',BH:'البحرين 🇧🇭',OM:'عمان 🇴🇲',JO:'الأردن 🇯🇴',LB:'لبنان 🇱🇧',SY:'سوريا 🇸🇾',YE:'اليمن 🇾🇪',TR:'تركيا 🇹🇷',IR:'إيران 🇮🇷',US:'أمريكا 🇺🇸',GB:'بريطانيا 🇬🇧',DE:'ألمانيا 🇩🇪',FR:'فرنسا 🇫🇷',CA:'كندا 🇨🇦',AU:'أستراليا 🇦🇺',IN:'الهند 🇮🇳',PK:'باكستان 🇵🇰',PH:'الفلبين 🇵🇭',ID:'إندونيسيا 🇮🇩',MY:'ماليزيا 🇲🇾',RU:'روسيا 🇷🇺',UA:'أوكرانيا 🇺🇦',BR:'البرازيل 🇧🇷',ES:'إسبانيا 🇪🇸',IT:'إيطاليا 🇮🇹',NL:'هولندا 🇳🇱',SE:'السويد 🇸🇪',KR:'كوريا 🇰🇷',JP:'اليابان 🇯🇵',CN:'الصين 🇨🇳'};
@@ -405,21 +406,20 @@ function renderProfile(d){
   $('result').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function renderLimited(o){
+  // بطاقة فورية من oEmbed + تضمين تيك توك الرسمي، ثم ترقية تلقائية بالبيانات الكاملة
   lastData={username:o.username,name:o.name,limited:true};
   avatarHD='';
-  const initials=esc((o.name||o.username||'?').trim().charAt(0));
   const url='https://www.tiktok.com/@'+o.username;
+  const embed=o.html?`<div class="tt-embed-wrap">${o.html}</div>`:'';
   $('result').innerHTML=`
   <div class="phead">
-    <div class="ava"><span class="af">${initials}</span></div>
     <div class="pname">${esc(o.name)}</div>
     <div class="uname">@${esc(o.username)}</div>
-    <span class="lim">⚡ وضع سريع — الإحصائيات محجوبة مؤقتاً</span>
-    <div class="note">تيك توك يحظر الخوادم الوسيطة أحياناً، لكن تم التأكد أن الحساب <b style="color:var(--cyan)">موجود</b>.<br>جرّب الجلب الكامل مجدداً.</div>
+    <span class="lim" id="limBadge">⚡ جاري جلب التفاصيل...</span>
   </div>
+  ${embed}
   <div class="acts">
     <button class="btn btn-p full" onclick="openTikTok()">فتح في تيك توك ↗</button>
-    <button class="btn btn-g full" onclick="doSearch(true)">🔄 محاولة الجلب الكامل</button>
     <button class="btn btn-g" onclick="copyLink()">🔗 نسخ الرابط</button>
     <button class="btn btn-g" onclick="shareMe()">📤 مشاركة</button>
   </div>
@@ -428,7 +428,29 @@ function renderLimited(o){
     <p>امسح للفتح في تيك توك</p>
   </div>`;
   $('result').hidden=false;
+  // تشغيل تضمين تيك توك الرسمي (يعرض الصورة والفيديوهات من تيك توك مباشرة)
+  try{
+    const s=document.createElement('script');
+    s.src='https://www.tiktok.com/embed.js';
+    s.async=true;
+    document.body.appendChild(s);
+  }catch(e){}
   $('result').scrollIntoView({behavior:'smooth',block:'start'});
+  // محاولة الترقية للبيانات الكاملة في الخلفية
+  tryFullData(o.username);
+}
+async function tryFullData(u){
+  try{
+    let d;
+    if(WORKER_URL){d=await fetchViaWorker(u);}
+    else{const html=await fetchPage('https://www.tiktok.com/@'+u);d=parseProfile(html);}
+    addHist(d.username,avatarHD);
+    renderProfile(d);
+    toast('تم جلب التفاصيل الكاملة ✓');
+  }catch(e){
+    const b=$('limBadge');
+    if(b)b.textContent='⚡ وضع سريع — تعذر جلب الإحصائيات حالياً';
+  }
 }
 function showAvatar(){if(!avatarHD)return;$('avaBig').src=avatarHD;$('avaModal').style.display='flex';}
 function openTikTok(){if(lastData)window.open('https://www.tiktok.com/@'+lastData.username,'_blank');}
@@ -476,25 +498,15 @@ async function doSearch(forceFull){
   }
   $('loader').hidden=false;
   try{
-    let d;
-    if(WORKER_URL){ d=await fetchViaWorker(u); }
-    else{
-      const html=await fetchPage('https://www.tiktok.com/@'+u);
-      d=parseProfile(html);
-    }
-    addHist(d.username,avatarHD);
-    renderProfile(d);
-  }catch(e1){
-    if(forceFull){showErr('تعذر الجلب الكامل حالياً — حاول بعد قليل');$('loader').hidden=true;return;}
-    try{
-      const o=await fetchOEmbed(u);
-      addHist(o.username,'');
-      renderLimited(o);
-      toast('وضع سريع: تم العثور على الحساب');
-    }catch(e2){
-      showErr(e2.message==='NOT_FOUND'||/غير موجود/.test(e1.message)?'الحساب غير موجود — تأكد من الاسم':'تعذر الاتصال — تحقق من الإنترنت وحاول مجدداً');
-    }
-  }finally{$('loader').hidden=true;}
+    // أولاً: oEmbed المباشر (سريع ومضمون) — يعرض البطاقة فوراً
+    const o=await fetchOEmbed(u);
+    addHist(o.username,'');
+    $('loader').hidden=true;
+    renderLimited(o); // بداخلها تتم الترقية للبيانات الكاملة تلقائياً
+  }catch(e){
+    $('loader').hidden=true;
+    showErr(e.message==='NOT_FOUND'?'الحساب غير موجود — تأكد من الاسم':'تعذر الاتصال — تحقق من الإنترنت وحاول مجدداً');
+  }
 }
 function hideAll(){$('result').hidden=true;$('errBox').hidden=true;}
 function showErr(m){$('errMsg').textContent=m;$('errBox').hidden=false;}
