@@ -149,7 +149,7 @@ body{
 <div class="app" id="app" hidden>
   <div class="hdr">
     <div class="logo"><div class="mk">R</div><h1>Rio</h1></div>
-    <div class="tag">كاشف حسابات تيك توك • <b>v2.0</b></div>
+    <div class="tag">كاشف حسابات تيك توك • <b>v2.2</b></div>
   </div>
 
   <div class="search">
@@ -188,6 +188,13 @@ body{
 
 <script>
 'use strict';
+/* ===== إعداد الخادم الخاص (Cloudflare Worker) =====
+   بعد نشر الـ Worker ضع رابطه هنا، وسيصبح المصدر الأساسي للبيانات */
+const WORKER_URL = ''; // مثال: 'https://rio-proxy.username.workers.dev'
+const WORKER_KEY = 'sm7pg8RRUexMxgNEv7GGNZCwOXQXz-su';
+/* حد الطلبات: حماية من الحظر وإساءة الاستخدام */
+const RATE_MIN_MS = 3000;
+let lastSearchAt = 0;
 /* ================= أدوات ================= */
 const $=id=>document.getElementById(id);
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;$('toasts').appendChild(t);setTimeout(()=>t.remove(),2600);}
@@ -266,6 +273,34 @@ async function fetchPage(url){
     }catch(e){lastErr=e;}
   }
   throw lastErr||new Error('فشل الاتصال');
+}
+async function fetchViaWorker(u){
+  const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),25000);
+  const r=await fetch(WORKER_URL+'?u='+encodeURIComponent(u)+'&key='+encodeURIComponent(WORKER_KEY),{signal:ctrl.signal});
+  clearTimeout(to);
+  if(!r.ok)throw new Error('worker_'+r.status);
+  const j=await r.json();
+  if(!j.ok||!j.profile)throw new Error(j.error||'worker_parse');
+  return normalizeWorker(j.profile);
+}
+function normalizeWorker(p){
+  const set=v=>v===0?'للجميع':(v===1?'للأصدقاء':'معطل');
+  const fol=p.followers||0,lik=p.likes||0,vid=p.videos||0;
+  const cc=(p.region||'').toUpperCase(),lc=(p.language||'').toLowerCase();
+  avatarHD=p.avatar||'';
+  return {
+    username:p.username,userId:p.userId,name:p.name,bio:p.bio,
+    verified:!!p.verified,private:!!p.private,
+    followers:fol,following:p.following||0,likes:lik,videos:vid,
+    avgLikes:vid?Math.round(lik/vid):0,
+    engRate:(fol&&vid)?Math.min(100,(Math.round(lik/vid)/fol*100)):0,
+    created:fmtT(p.created),region:countriesMap[cc]||p.region||'غير محدد',
+    language:langsMap[lc]||p.language||'غير محدد',
+    duet:set(p.duet),comments:set(p.comments),stitch:set(p.stitch),download:set(p.download),
+    friends:p.friends||0,commerce:p.commerce?'نعم':'لا',
+    device:p.device===1?'آيفون 📱':(p.device===2?'أندرويد 🤖':'غير معروف'),
+    via:'worker'
+  };
 }
 async function fetchOEmbed(u){
   const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),15000);
@@ -429,6 +464,9 @@ async function dlAvatar(){
 
 /* ================= البحث ================= */
 async function doSearch(forceFull){
+  const now=Date.now();
+  if(now-lastSearchAt<RATE_MIN_MS&&!forceFull){toast('انتظر ثوانٍ بين كل بحث');return;}
+  lastSearchAt=now;
   const q=$('query').value;hideAll();
   let u=extractUsername(q);
   if(!u){showErr('اكتب اسم مستخدم صحيح مثل @rio');return;}
@@ -438,8 +476,12 @@ async function doSearch(forceFull){
   }
   $('loader').hidden=false;
   try{
-    const html=await fetchPage('https://www.tiktok.com/@'+u);
-    const d=parseProfile(html);
+    let d;
+    if(WORKER_URL){ d=await fetchViaWorker(u); }
+    else{
+      const html=await fetchPage('https://www.tiktok.com/@'+u);
+      d=parseProfile(html);
+    }
     addHist(d.username,avatarHD);
     renderProfile(d);
   }catch(e1){
